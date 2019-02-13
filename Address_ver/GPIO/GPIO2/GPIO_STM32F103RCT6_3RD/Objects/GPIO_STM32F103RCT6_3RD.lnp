@@ -1,0 +1,8 @@
+--cpu Cortex-M3
+".\objects\gpio_out.o"
+".\objects\stm32_init.o"
+".\objects\stm32f10x.o"
+--library_type=microlib --strict --scatter ".\Objects\GPIO_STM32F103RCT6_3RD.sct"
+--summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
+--info sizes --info totals --info unused --info veneers
+--list ".\Listings\GPIO_STM32F103RCT6_3RD.map" -o .\Objects\GPIO_STM32F103RCT6_3RD.axf

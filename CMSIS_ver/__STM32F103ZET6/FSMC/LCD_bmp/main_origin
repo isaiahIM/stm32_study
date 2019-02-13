@@ -1,0 +1,68 @@
+#include "usart.h"
+#include "SysTick.h"
+#include "debug_support.h"
+#include "stm32f10x.h"
+#include "my_LCD.h"
+#include "my_LCD_font.h"
+
+#define HIGH_DENSITY
+
+
+#define BLUE_SIZE 10000
+GPIO_InitTypeDef uart_rx;
+GPIO_InitTypeDef uart_tx;
+
+//uint16_t blueScreen[BLUE_SIZE];
+
+void LCD_PrintBMP(uint8_t bmp[], uint32_t dataSize);
+
+int main()
+{
+    int i;
+
+    for(i=0; i<BLUE_SIZE; i++)
+    {
+        //blueScreen[i]=0x3f;
+    }
+/*USART RCC_CLOCK CONFIG*/
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
+    USART_BaseConfig(USART_NUM_1, USART1, 9600, USART_WordLength_8b, (USART_Mode_Rx|USART_Mode_Tx), USART_Parity_No, USART_StopBits_1);
+
+    SysTick_Init();
+    
+    LCD_Init();
+    LCD_WriteData(0x03, 0x1038);
+    while(1)
+    {
+        LCD_GotoXY(0, 0);
+//        LCD_Write_MultiData(0x22, blueScreen, BLUE_SIZE);
+        LCD_PrintBMP(tiger, 0x25846);
+  //      LCD_Draw_Circle(120, 160, 80, blueScreen[0]);
+    
+    }
+}
+
+void LCD_PrintBMP(uint8_t bmp[], uint32_t dataSize)
+{
+    uint32_t i;
+    uint8_t colorCount=0, data;
+    uint16_t color;
+    
+	
+    printf("%d ", dataSize);
+    
+    for(i=0X46; i<dataSize; i++)
+    {
+        data=bmp[i];
+        color|=( (uint16_t)((float)(data*0.75) )<<(colorCount*5));
+        colorCount++;
+        
+        if(colorCount==3)
+        {
+            colorCount=0;
+            LCD_WriteData(0x22, color);
+            color=0x00;
+        }        
+    }
+}
+

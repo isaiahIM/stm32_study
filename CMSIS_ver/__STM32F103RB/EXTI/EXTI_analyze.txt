@@ -1,0 +1,134 @@
+void EXTI0_Config(void)
+{
+  /* Enable GPIOA clock */
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);// gpioa enable(RCC->APB2ENR|=0X01;)
+  
+  /* Configure PA.00 pin as input floating */
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+  GPIO_Init(GPIOA, &GPIO_InitStructure);// GPIOA.0 FLAOTING INPUT
+
+  /* Enable AFIO clock */
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);// AFIO ENABLE
+
+  /* Connect EXTI0 Line to PA.00 pin */
+  GPIO_EXTILineConfig(GPIO_PortSourceGPIOA, GPIO_PinSource0);// 인터럽트 버스 설정 << 1참조
+
+  /* Configure EXTI0 line */
+  EXTI_InitStructure.EXTI_Line = EXTI_Line0;
+  EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+  EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;  
+  EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+  EXTI_Init(&EXTI_InitStructure);// 인터럽트 세팅 << 2참조
+
+  /* Enable and set EXTI0 Interrupt to the lowest priority */
+  NVIC_InitStructure.NVIC_IRQChannel = EXTI0_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x0F;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x0F;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);// NVIC 세팅 << 3참조
+}
+
+1. GPIO_EXTILineConfig
+
+void GPIO_EXTILineConfig(uint8_t GPIO_PortSource, uint8_t GPIO_PinSource)
+{
+  uint32_t tmp = 0x00;
+  /* Check the parameters */
+  assert_param(IS_GPIO_EXTI_PORT_SOURCE(GPIO_PortSource));
+  assert_param(IS_GPIO_PIN_SOURCE(GPIO_PinSource));
+  
+  tmp = ((uint32_t)0x0F) << (0x04 * (GPIO_PinSource & (uint8_t)0x03));// 핀에 해당하는 인터럽트 Peripheral 마스킹 ( 0x04 * (GPIO_PinSource & (uint8_t)0x03)의 경우는 4*(GPIO_PinSource%3)과 같음 )
+  AFIO->EXTICR[GPIO_PinSource >> 0x02] &= ~tmp;// 해당 Peripheral 초기화 (GPIO_PinSource >> 0x02 의 경우 GPIO_PinSource /4와 같음)
+  AFIO->EXTICR[GPIO_PinSource >> 0x02] |= (((uint32_t)GPIO_PortSource) << (0x04 * (GPIO_PinSource & (uint8_t)0x03)));// 해당 포트의 핀 레지스터 사용여부 설정
+}
+
+
+2. EXTI_Init
+
+void EXTI_Init(EXTI_InitTypeDef* EXTI_InitStruct)
+{
+  uint32_t tmp = 0;
+
+  /* Check the parameters */
+  assert_param(IS_EXTI_MODE(EXTI_InitStruct->EXTI_Mode));
+  assert_param(IS_EXTI_TRIGGER(EXTI_InitStruct->EXTI_Trigger));
+  assert_param(IS_EXTI_LINE(EXTI_InitStruct->EXTI_Line));  
+  assert_param(IS_FUNCTIONAL_STATE(EXTI_InitStruct->EXTI_LineCmd));
+
+  tmp = (uint32_t)EXTI_BASE;// 0X0400 OFFSET FROM Peripheral
+     
+  if (EXTI_InitStruct->EXTI_LineCmd != DISABLE)// 인터럽트가 활성화 되있다면
+  {
+    /* Clear EXTI line configuration */
+    EXTI->IMR &= ~EXTI_InitStruct->EXTI_Line;// 인터럽트 마스크 초기화
+    EXTI->EMR &= ~EXTI_InitStruct->EXTI_Line;// 인터럽트 이벤트 초기화
+    
+    tmp += EXTI_InitStruct->EXTI_Mode;// tmp에 인터럽트 모드를 더함
+
+    *(__IO uint32_t *) tmp |= EXTI_InitStruct->EXTI_Line;// EXTI->IMR = EXTI_InitStruct->EXTI_Line;과 같음
+
+    /* Clear Rising Falling edge configuration */
+    EXTI->RTSR &= ~EXTI_InitStruct->EXTI_Line;// 해당 인터럽트 핀 RISING disable
+    EXTI->FTSR &= ~EXTI_InitStruct->EXTI_Line;// 해당 인터럽트 핀 FALLING disable
+    
+    /* Select the trigger for the selected external interrupts */
+    if (EXTI_InitStruct->EXTI_Trigger == EXTI_Trigger_Rising_Falling)// CHANGE Interrupt일때
+    {
+      /* Rising Falling edge */
+      EXTI->RTSR |= EXTI_InitStruct->EXTI_Line;// 해당 인터럽트 핀 RISING disable
+      EXTI->FTSR |= EXTI_InitStruct->EXTI_Line;// 해당 인터럽트 핀 FALLING disable
+    }
+    else
+    {
+      tmp = (uint32_t)EXTI_BASE;
+      tmp += EXTI_InitStruct->EXTI_Trigger;// 해당하는 인터럽트 레지스터 주소값 저장
+
+      *(__IO uint32_t *) tmp |= EXTI_InitStruct->EXTI_Line;// EXIT->FTSR 혹은 EXIT->RTSR 세팅
+    }
+  }
+  else// 인터럽트가 비활성되있을때
+  {
+    tmp += EXTI_InitStruct->EXTI_Mode;
+
+    /* Disable the selected external lines */
+    *(__IO uint32_t *) tmp &= ~EXTI_InitStruct->EXTI_Line;// 해당하는 인터럽트 핀 Disable
+  }
+}
+
+
+3. NVIC_Init
+
+void NVIC_Init(NVIC_InitTypeDef* NVIC_InitStruct)
+{
+  uint32_t tmppriority = 0x00, tmppre = 0x00, tmpsub = 0x0F;
+  
+  /* Check the parameters */
+  assert_param(IS_FUNCTIONAL_STATE(NVIC_InitStruct->NVIC_IRQChannelCmd));
+  assert_param(IS_NVIC_PREEMPTION_PRIORITY(NVIC_InitStruct->NVIC_IRQChannelPreemptionPriority));  
+  assert_param(IS_NVIC_SUB_PRIORITY(NVIC_InitStruct->NVIC_IRQChannelSubPriority));
+    
+  if (NVIC_InitStruct->NVIC_IRQChannelCmd != DISABLE)// NVIC를 사용할때
+  {
+    /* Compute the Corresponding IRQ Priority --------------------------------*/    
+    tmppriority = (0x700 - ((SCB->AIRCR) & (uint32_t)0x700))>> 0x08;// main Priority 갯수
+    tmppre = (0x4 - tmppriority);// main Priority 위치(byte에서 main|sub중에서 main 위치)
+    tmpsub = tmpsub >> tmppriority;// sub Prioity 갯수
+
+    tmppriority = (uint32_t)NVIC_InitStruct->NVIC_IRQChannelPreemptionPriority << tmppre;// main Priority값 입력
+    tmppriority |=  NVIC_InitStruct->NVIC_IRQChannelSubPriority & tmpsub;// sub Priority 값 입력
+    tmppriority = tmppriority << 0x04;
+        
+    NVIC->IP[NVIC_InitStruct->NVIC_IRQChannel] = tmppriority;
+    
+    /* Enable the Selected IRQ Channels --------------------------------------*/
+    NVIC->ISER[NVIC_InitStruct->NVIC_IRQChannel >> 0x05] =// NVIC_InitStruct->NVIC_IRQChannel >> 0x05는 NVIC_InitStruct->NVIC_IRQChannel/32와 같음
+      (uint32_t)0x01 << (NVIC_InitStruct->NVIC_IRQChannel & (uint8_t)0x1F);// NVIC->ISER
+  }
+  else
+  {
+    /* Disable the Selected IRQ Channels -------------------------------------*/
+    NVIC->ICER[NVIC_InitStruct->NVIC_IRQChannel >> 0x05] =
+      (uint32_t)0x01 << (NVIC_InitStruct->NVIC_IRQChannel & (uint8_t)0x1F);
+  }
+}

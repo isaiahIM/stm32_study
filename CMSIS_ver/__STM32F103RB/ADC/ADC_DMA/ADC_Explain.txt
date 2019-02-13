@@ -1,0 +1,423 @@
+adc 모드 설명: http://cafe.naver.com/circuitsmanual/196811
+dma 레지스터: http://blog.naver.com/golsm21/120141346669
+adc: http://blog.naver.com/gauya/220232257331
+
+/**
+  ******************************************************************************
+  * @file    ADC/ADC1_DMA/main.c 
+  * @author  MCD Application Team
+  * @version V3.5.0
+  * @date    08-April-2011
+  * @brief   Main program body
+  ******************************************************************************
+  * @attention
+  *
+  * THE PRESENT FIRMWARE WHICH IS FOR GUIDANCE ONLY AIMS AT PROVIDING CUSTOMERS
+  * WITH CODING INFORMATION REGARDING THEIR PRODUCTS IN ORDER FOR THEM TO SAVE
+  * TIME. AS A RESULT, STMICROELECTRONICS SHALL NOT BE HELD LIABLE FOR ANY
+  * DIRECT, INDIRECT OR CONSEQUENTIAL DAMAGES WITH RESPECT TO ANY CLAIMS ARISING
+  * FROM THE CONTENT OF SUCH FIRMWARE AND/OR THE USE MADE BY CUSTOMERS OF THE
+  * CODING INFORMATION CONTAINED HEREIN IN CONNECTION WITH THEIR PRODUCTS.
+  *
+  * <h2><center>&copy; COPYRIGHT 2011 STMicroelectronics</center></h2>
+  ******************************************************************************
+  */ 
+
+/* Includes ------------------------------------------------------------------*/
+#include "stm32f10x.h"
+
+/** @addtogroup STM32F10x_StdPeriph_Examples
+  * @{
+  */
+
+/** @addtogroup ADC_ADC1_DMA
+  * @{
+  */ 
+
+
+/* Private typedef -----------------------------------------------------------*/
+/* Private define ------------------------------------------------------------*/
+#define ADC1_DR_Address    ((uint32_t)0x4001244C)
+
+/* Private macro -------------------------------------------------------------*/
+/* Private variables ---------------------------------------------------------*/
+ADC_InitTypeDef ADC_InitStructure;
+DMA_InitTypeDef DMA_InitStructure;
+__IO uint16_t ADCConvertedValue;
+
+/* Private function prototypes -----------------------------------------------*/
+void RCC_Configuration(void);
+void GPIO_Configuration(void);
+
+/* Private functions ---------------------------------------------------------*/
+
+/**
+  * @brief   Main program
+  * @param  None
+  * @retval None
+  */
+int main(void)
+{
+  /*!< At this stage the microcontroller clock setting is already configured, 
+       this is done through SystemInit() function which is called from startup
+       file (startup_stm32f10x_xx.s) before to branch to application main.
+       To reconfigure the default setting of SystemInit() function, refer to
+       system_stm32f10x.c file
+     */     
+       
+  /* System clocks configuration ---------------------------------------------*/
+  RCC_Configuration();// RCC  CLOCK 설정 << 1. 참조
+
+  /* GPIO configuration ------------------------------------------------------*/
+  GPIO_Configuration();
+
+//while(1);
+
+  /* DMA1 channel1 configuration ----------------------------------------------*/
+  DMA_DeInit(DMA1_Channel1);// DMA 초기화
+  DMA_InitStructure.DMA_PeripheralBaseAddr = ADC1_DR_Address;// DMA 에서 값을 읽어올 주소= ADC->DR주소
+  DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)&ADCConvertedValue;// DMA에서 읽어온 값을 저장할 주소= &ADCConvertedValue
+  DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;// peripheral에서 값을 읽음
+  DMA_InitStructure.DMA_BufferSize = 1;// DMA에서 전송할 데이터 갯수
+  DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;// 페리페럴 주소 증가X
+  DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Disable;// 메모리 주소 증가X
+  DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord;// DMA 페리페럴 데이터 사이즈: 16BIT(1/2 WORD)
+  DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;// DMA 메모리데이터 사이즈: 16BIT(1/2 WORD)
+  DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;// CIRC모드(반복)
+  DMA_InitStructure.DMA_Priority = DMA_Priority_High;// DMA 채널중에서 우선순위가 높음
+  DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;// MEM_TO_MEM 사용 안함
+  DMA_Init(DMA1_Channel1, &DMA_InitStructure);// 설정값 적용 << 2. 참조
+  
+  /* Enable DMA1 channel1 */
+  DMA_Cmd(DMA1_Channel1, ENABLE);// DMA ENABLE
+  
+  /* ADC1 configuration ------------------------------------------------------*/
+  ADC_InitStructure.ADC_Mode = ADC_Mode_Independent;// Independent모드
+  ADC_InitStructure.ADC_ScanConvMode = ENABLE;// scan enable
+  ADC_InitStructure.ADC_ContinuousConvMode = ENABLE;// 멀티 채널 (스캔), 연속 변환 모드 
+  ADC_InitStructure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_None;// 외부 트리거 사용x
+  ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right;// RIGHT ALIGN
+  ADC_InitStructure.ADC_NbrOfChannel = 1;// ADC 채널
+  ADC_Init(ADC1, &ADC_InitStructure);// ADC 설정값 적용 << 3. 참조
+
+  /* ADC1 regular channel14 configuration */ 
+  ADC_RegularChannelConfig(ADC1, ADC_Channel_14, 1, ADC_SampleTime_55Cycles5);// ADC1 14채널 시퀀스:1번, 55.5 cycle 샘플링 << 4.참조
+
+  /* Enable ADC1 DMA */
+  ADC_DMACmd(ADC1, ENABLE);// ADC-DMA ENABLE
+  
+  /* Enable ADC1 */
+  ADC_Cmd(ADC1, ENABLE);// ADC ENABLE
+
+  /* Enable ADC1 reset calibration register */   
+  ADC_ResetCalibration(ADC1);
+  /* Check the end of ADC1 reset calibration register */
+  while(ADC_GetResetCalibrationStatus(ADC1));
+
+  /* Start ADC1 calibration */
+  ADC_StartCalibration(ADC1);
+  /* Check the end of ADC1 calibration */
+  while(ADC_GetCalibrationStatus(ADC1));
+     
+  /* Start ADC1 Software Conversion */ 
+  ADC_SoftwareStartConvCmd(ADC1, ENABLE);
+
+  while (1)
+  {
+  }
+}
+
+/**
+  * @brief  Configures the different system clocks.
+  * @param  None
+  * @retval None
+  */
+void RCC_Configuration(void)
+{
+#if defined (STM32F10X_LD_VL) || defined (STM32F10X_MD_VL) || defined (STM32F10X_HD_VL)
+  /* ADCCLK = PCLK2/2 */
+  RCC_ADCCLKConfig(RCC_PCLK2_Div2); 
+#else
+  /* ADCCLK = PCLK2/4 */
+  RCC_ADCCLKConfig(RCC_PCLK2_Div4); 
+#endif
+  /* Enable peripheral clocks ------------------------------------------------*/
+  /* Enable DMA1 clock */
+  RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
+
+  /* Enable ADC1 and GPIOC clock */
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1 | RCC_APB2Periph_GPIOC, ENABLE);
+}
+
+/**
+  * @brief  Configures the different GPIO ports.
+  * @param  None
+  * @retval None
+  */
+void GPIO_Configuration(void)
+{
+  GPIO_InitTypeDef GPIO_InitStructure;
+
+  /* Configure PC.04 (ADC Channel14) as analog input -------------------------*/
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AIN;
+  GPIO_Init(GPIOC, &GPIO_InitStructure);
+}
+
+#ifdef  USE_FULL_ASSERT
+
+/**
+  * @brief  Reports the name of the source file and the source line number
+  *         where the assert_param error has occurred.
+  * @param  file: pointer to the source file name
+  * @param  line: assert_param error line source number
+  * @retval None
+  */
+void assert_failed(uint8_t* file, uint32_t line)
+{ 
+  /* User can add his own implementation to report the file name and line number,
+     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+
+  /* Infinite loop */
+  while (1)
+  {
+  }
+}
+
+#endif
+
+/**
+  * @}
+  */ 
+
+/**
+  * @}
+  */ 
+
+/******************* (C) COPYRIGHT 2011 STMicroelectronics *****END OF FILE****/
+
+
+
+
+1. RCC_Configuration();
+
+void RCC_Configuration(void)
+{
+#if defined (STM32F10X_LD_VL) || defined (STM32F10X_MD_VL) || defined (STM32F10X_HD_VL)
+  /* ADCCLK = PCLK2/2 */
+  RCC_ADCCLKConfig(RCC_PCLK2_Div2); // 시스템클럭/2
+#else
+  /* ADCCLK = PCLK2/4 */
+  RCC_ADCCLKConfig(RCC_PCLK2_Div4); // 시스템클럭/4
+
+/*****클럭분배를 하는 이유: ADC는 최대 14MHz클럭으로 설정해야 하기 때문.***/
+#endif
+  /* Enable peripheral clocks ------------------------------------------------*/
+  /* Enable DMA1 clock */
+  RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);// DMA Enable
+
+  /* Enable ADC1 and GPIOC clock */
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1 | RCC_APB2Periph_GPIOC, ENABLE);// ADC, ADC-GPIO ENABLE
+}
+
+
+
+2. void DMA_Init(DMA_Channel_TypeDef* DMAy_Channelx, DMA_InitTypeDef* DMA_InitStruct);
+
+void DMA_Init(DMA_Channel_TypeDef* DMAy_Channelx, DMA_InitTypeDef* DMA_InitStruct)
+{
+  uint32_t tmpreg = 0;
+
+  /* Check the parameters */
+  assert_param(IS_DMA_ALL_PERIPH(DMAy_Channelx));
+  assert_param(IS_DMA_DIR(DMA_InitStruct->DMA_DIR));
+  assert_param(IS_DMA_BUFFER_SIZE(DMA_InitStruct->DMA_BufferSize));
+  assert_param(IS_DMA_PERIPHERAL_INC_STATE(DMA_InitStruct->DMA_PeripheralInc));
+  assert_param(IS_DMA_MEMORY_INC_STATE(DMA_InitStruct->DMA_MemoryInc));   
+  assert_param(IS_DMA_PERIPHERAL_DATA_SIZE(DMA_InitStruct->DMA_PeripheralDataSize));
+  assert_param(IS_DMA_MEMORY_DATA_SIZE(DMA_InitStruct->DMA_MemoryDataSize));
+  assert_param(IS_DMA_MODE(DMA_InitStruct->DMA_Mode));
+  assert_param(IS_DMA_PRIORITY(DMA_InitStruct->DMA_Priority));
+  assert_param(IS_DMA_M2M_STATE(DMA_InitStruct->DMA_M2M));
+
+/*--------------------------- DMAy Channelx CCR Configuration -----------------*/
+  /* Get the DMAy_Channelx CCR value */
+  tmpreg = DMAy_Channelx->CCR;// 현재 CCR값 저장
+  /* Clear MEM2MEM, PL, MSIZE, PSIZE, MINC, PINC, CIRC and DIR bits */
+  tmpreg &= CCR_CLEAR_Mask;// CCR값 초기화
+  /* Configure DMAy Channelx: data transfer, data size, priority level and mode */
+  /* Set DIR bit according to DMA_DIR value */
+  /* Set CIRC bit according to DMA_Mode value */
+  /* Set PINC bit according to DMA_PeripheralInc value */
+  /* Set MINC bit according to DMA_MemoryInc value */
+  /* Set PSIZE bits according to DMA_PeripheralDataSize value */
+  /* Set MSIZE bits according to DMA_MemoryDataSize value */
+  /* Set PL bits according to DMA_Priority value */
+  /* Set the MEM2MEM bit according to DMA_M2M value */
+  tmpreg |= DMA_InitStruct->DMA_DIR | DMA_InitStruct->DMA_Mode |
+            DMA_InitStruct->DMA_PeripheralInc | DMA_InitStruct->DMA_MemoryInc |
+            DMA_InitStruct->DMA_PeripheralDataSize | DMA_InitStruct->DMA_MemoryDataSize |
+            DMA_InitStruct->DMA_Priority | DMA_InitStruct->DMA_M2M;// DMA CCR 설정값 저장
+
+  /* Write to DMAy Channelx CCR */
+  DMAy_Channelx->CCR = tmpreg;// CCR 값 적용
+
+/*--------------------------- DMAy Channelx CNDTR Configuration ---------------*/
+  /* Write to DMAy Channelx CNDTR */
+  DMAy_Channelx->CNDTR = DMA_InitStruct->DMA_BufferSize;
+
+/*--------------------------- DMAy Channelx CPAR Configuration ----------------*/
+  /* Write to DMAy Channelx CPAR */
+  DMAy_Channelx->CPAR = DMA_InitStruct->DMA_PeripheralBaseAddr;
+
+/*--------------------------- DMAy Channelx CMAR Configuration ----------------*/
+  /* Write to DMAy Channelx CMAR */
+  DMAy_Channelx->CMAR = DMA_InitStruct->DMA_MemoryBaseAddr;
+}
+
+
+3. void ADC_Init(ADC_TypeDef* ADCx, ADC_InitTypeDef* ADC_InitStruct)
+
+void ADC_Init(ADC_TypeDef* ADCx, ADC_InitTypeDef* ADC_InitStruct)
+{
+  uint32_t tmpreg1 = 0;
+  uint8_t tmpreg2 = 0;
+  /* Check the parameters */
+  assert_param(IS_ADC_ALL_PERIPH(ADCx));
+  assert_param(IS_ADC_MODE(ADC_InitStruct->ADC_Mode));
+  assert_param(IS_FUNCTIONAL_STATE(ADC_InitStruct->ADC_ScanConvMode));
+  assert_param(IS_FUNCTIONAL_STATE(ADC_InitStruct->ADC_ContinuousConvMode));
+  assert_param(IS_ADC_EXT_TRIG(ADC_InitStruct->ADC_ExternalTrigConv));   
+  assert_param(IS_ADC_DATA_ALIGN(ADC_InitStruct->ADC_DataAlign)); 
+  assert_param(IS_ADC_REGULAR_LENGTH(ADC_InitStruct->ADC_NbrOfChannel));
+
+  /*---------------------------- ADCx CR1 Configuration -----------------*/
+  /* Get the ADCx CR1 value */
+  tmpreg1 = ADCx->CR1;// CR1값 읽어옴
+  /* Clear DUALMOD and SCAN bits */
+  tmpreg1 &= CR1_CLEAR_Mask;// CR1값 초기화
+  /* Configure ADCx: Dual mode and scan conversion mode */
+  /* Set DUALMOD bits according to ADC_Mode value */
+  /* Set SCAN bit according to ADC_ScanConvMode value */
+  tmpreg1 |= (uint32_t)(ADC_InitStruct->ADC_Mode | ((uint32_t)ADC_InitStruct->ADC_ScanConvMode << 8));// ADC MODE저장
+  /* Write to ADCx CR1 */
+  ADCx->CR1 = tmpreg1;//ADC->CR1에 적용
+
+  /*---------------------------- ADCx CR2 Configuration -----------------*/ << CR1이랑 같음
+  /* Get the ADCx CR2 value */
+  tmpreg1 = ADCx->CR2;
+  /* Clear CONT, ALIGN and EXTSEL bits */
+  tmpreg1 &= CR2_CLEAR_Mask;
+  /* Configure ADCx: external trigger event and continuous conversion mode */
+  /* Set ALIGN bit according to ADC_DataAlign value */
+  /* Set EXTSEL bits according to ADC_ExternalTrigConv value */
+  /* Set CONT bit according to ADC_ContinuousConvMode value */
+  tmpreg1 |= (uint32_t)(ADC_InitStruct->ADC_DataAlign | ADC_InitStruct->ADC_ExternalTrigConv |
+            ((uint32_t)ADC_InitStruct->ADC_ContinuousConvMode << 1));
+  /* Write to ADCx CR2 */
+  ADCx->CR2 = tmpreg1;
+
+  /*---------------------------- ADCx SQR1 Configuration -----------------*/
+  /* Get the ADCx SQR1 value */
+  tmpreg1 = ADCx->SQR1;
+  /* Clear L bits */
+  tmpreg1 &= SQR1_CLEAR_Mask;
+  /* Configure ADCx: regular channel sequence length */
+  /* Set L bits according to ADC_NbrOfChannel value */
+  tmpreg2 |= (uint8_t) (ADC_InitStruct->ADC_NbrOfChannel - (uint8_t)1);// ADC채널 맞춤
+  tmpreg1 |= (uint32_t)tmpreg2 << 20;// 채널 비트 맞춤
+  /* Write to ADCx SQR1 */
+  ADCx->SQR1 = tmpreg1;
+}
+
+
+4. void ADC_RegularChannelConfig(ADC_TypeDef* ADCx, uint8_t ADC_Channel, uint8_t Rank, uint8_t ADC_SampleTime)
+
+void ADC_RegularChannelConfig(ADC_TypeDef* ADCx, uint8_t ADC_Channel, uint8_t Rank, uint8_t ADC_SampleTime)
+{
+  uint32_t tmpreg1 = 0, tmpreg2 = 0;
+  /* Check the parameters */
+  assert_param(IS_ADC_ALL_PERIPH(ADCx));
+  assert_param(IS_ADC_CHANNEL(ADC_Channel));
+  assert_param(IS_ADC_REGULAR_RANK(Rank));
+  assert_param(IS_ADC_SAMPLE_TIME(ADC_SampleTime));
+  /* if ADC_Channel_10 ... ADC_Channel_17 is selected */
+  if (ADC_Channel > ADC_Channel_9)
+  {
+    /* Get the old register value */
+    tmpreg1 = ADCx->SMPR1;
+    /* Calculate the mask to clear */
+    tmpreg2 = SMPR1_SMP_Set << (3 * (ADC_Channel - 10));
+    /* Clear the old channel sample time */
+    tmpreg1 &= ~tmpreg2;
+    /* Calculate the mask to set */
+    tmpreg2 = (uint32_t)ADC_SampleTime << (3 * (ADC_Channel - 10));
+    /* Set the new channel sample time */
+    tmpreg1 |= tmpreg2;
+    /* Store the new register value */
+    ADCx->SMPR1 = tmpreg1;
+  }
+  else /* ADC_Channel include in ADC_Channel_[0..9] */
+  {
+    /* Get the old register value */
+    tmpreg1 = ADCx->SMPR2;
+    /* Calculate the mask to clear */
+    tmpreg2 = SMPR2_SMP_Set << (3 * ADC_Channel);
+    /* Clear the old channel sample time */
+    tmpreg1 &= ~tmpreg2;
+    /* Calculate the mask to set */
+    tmpreg2 = (uint32_t)ADC_SampleTime << (3 * ADC_Channel);
+    /* Set the new channel sample time */
+    tmpreg1 |= tmpreg2;
+    /* Store the new register value */
+    ADCx->SMPR2 = tmpreg1;
+  }
+  /* For Rank 1 to 6 */
+  if (Rank < 7)
+  {
+    /* Get the old register value */
+    tmpreg1 = ADCx->SQR3;
+    /* Calculate the mask to clear */
+    tmpreg2 = SQR3_SQ_Set << (5 * (Rank - 1));
+    /* Clear the old SQx bits for the selected rank */
+    tmpreg1 &= ~tmpreg2;
+    /* Calculate the mask to set */
+    tmpreg2 = (uint32_t)ADC_Channel << (5 * (Rank - 1));
+    /* Set the SQx bits for the selected rank */
+    tmpreg1 |= tmpreg2;
+    /* Store the new register value */
+    ADCx->SQR3 = tmpreg1;
+  }
+  /* For Rank 7 to 12 */
+  else if (Rank < 13)
+  {
+    /* Get the old register value */
+    tmpreg1 = ADCx->SQR2;
+    /* Calculate the mask to clear */
+    tmpreg2 = SQR2_SQ_Set << (5 * (Rank - 7));
+    /* Clear the old SQx bits for the selected rank */
+    tmpreg1 &= ~tmpreg2;
+    /* Calculate the mask to set */
+    tmpreg2 = (uint32_t)ADC_Channel << (5 * (Rank - 7));
+    /* Set the SQx bits for the selected rank */
+    tmpreg1 |= tmpreg2;
+    /* Store the new register value */
+    ADCx->SQR2 = tmpreg1;
+  }
+  /* For Rank 13 to 16 */
+  else
+  {
+    /* Get the old register value */
+    tmpreg1 = ADCx->SQR1;
+    /* Calculate the mask to clear */
+    tmpreg2 = SQR1_SQ_Set << (5 * (Rank - 13));
+    /* Clear the old SQx bits for the selected rank */
+    tmpreg1 &= ~tmpreg2;
+    /* Calculate the mask to set */
+    tmpreg2 = (uint32_t)ADC_Channel << (5 * (Rank - 13));
+    /* Set the SQx bits for the selected rank */
+    tmpreg1 |= tmpreg2;
+    /* Store the new register value */
+    ADCx->SQR1 = tmpreg1;
+  }
+}

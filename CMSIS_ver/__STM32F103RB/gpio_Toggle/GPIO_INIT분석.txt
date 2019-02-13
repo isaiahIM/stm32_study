@@ -1,0 +1,58 @@
+micro lib: arm 에서 최적화된 라이브러리(keil->option->target)
+
+function :
+
+ currentmode = ((uint32_t)GPIO_InitStruct->GPIO_Mode) & ((uint32_t)0x0F);// gpio모드 저장
+  if ((((uint32_t)GPIO_InitStruct->GPIO_Mode) & ((uint32_t)0x10)) != 0x00)// 만약 input이면
+  { 
+    /* Check the parameters */
+    assert_param(IS_GPIO_SPEED(GPIO_InitStruct->GPIO_Speed));// gpio speed가 설정되있을때
+    /* Output mode */
+    currentmode |= (uint32_t)GPIO_InitStruct->GPIO_Speed;// gpio 속도를 or해서 저장.
+  }
+
+if (((uint32_t)GPIO_InitStruct->GPIO_Pin & ((uint32_t)0x00FF)) != 0x00)// 하위8비트(crl) 판단
+  {
+    tmpreg = GPIOx->CRL;// tmpreg 에 CRL값 저장
+    for (pinpos = 0x00; pinpos < 0x08; pinpos++)
+    {
+      pos = ((uint32_t)0x01) << pinpos;// 현재 핀의 위치
+      /* Get the port pins position */
+      currentpin = (GPIO_InitStruct->GPIO_Pin) & pos;// currentpin에 현재 PIN정보 저장
+      if (currentpin == pos)// PIN이 활성화 되있으면
+      {
+        pos = pinpos << 2;// pinPos*4 ex) 0x01<<2=4, 0x02<<2=8, 0x03<<2=12..
+        /* Clear the corresponding low control register bits */
+        pinmask = ((uint32_t)0x0F) << pos;
+        tmpreg &= ~pinmask;// 해당 핀의 CRL을 0X00으로 초기화.
+        /* Write the mode configuration in the corresponding bits */
+        tmpreg |= (currentmode << pos);// tmpreg 에 현재 핀의 currentmode(input, floating input등..)저장
+        /* Reset the corresponding ODR bit */
+        if (GPIO_InitStruct->GPIO_Mode == GPIO_Mode_IPD)// gpio모드가 IPD(INPUT PULL-DOWN)일때
+        {
+          GPIOx->BRR = (((uint32_t)0x01) << pinpos);// gpio에서 해당 핀을 HIGH로 만듦(이렇게 되면 PULL-DOWN)
+        }
+        else
+        {
+          /* Set the corresponding ODR bit */
+          if (GPIO_InitStruct->GPIO_Mode == GPIO_Mode_IPU)// gpio모드가 IPU(INPUT PULL-UP)일때
+          {
+            GPIOx->BSRR = (((uint32_t)0x01) << pinpos);// gpio에서 해당 핀을 LOW로 만듦(이렇게 되면 PULL-UP)
+          }
+        }
+      }
+    }// 이걸 8번 반복
+    GPIOx->CRL = tmpreg;// CRL에 tmpreg값을 적용
+  }
+
+
+/*이렇게 GPIO_Init함수는 동작하며, 이 함수는 해당 포트의 핀 하나를 설정하는 레지스터이다.*/
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,29 @@
+Dependencies for Project 'IOToggle', Target 'IOToggle': (DO NOT MODIFY !)
+F (.\src\stm32f10x_conf.h)(0x5AA984A5)()
+F (.\src\system_stm32f10x.c)(0x4D999616)(-c --cpu Cortex-M3 -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I E:\lecture\Header_all -I .\src-IC:\Keil_v5\ARM\RV31\INC-IC:\Keil_v5\ARM\CMSIS\Include-IC:\Keil_v5\ARM\INC\ST\STM32F10x-D__UVISION_VERSION="524" -DUSE_STDPERIPH_DRIVER -DSTM32F10X_MD-o .\out\system_stm32f10x.o --omf_browse .\out\system_stm32f10x.crf --depend .\out\system_stm32f10x.d)
+I (C:\Keil_v5\ARM\INC\ST\STM32F10x\stm32f10x.h)(0x53BA3504)
+I (C:\Keil_v5\ARM\CMSIS\Include\core_cm3.h)(0x53462B64)
+I (C:\Keil_v5\ARM\ARMCC\include\stdint.h)(0x588B7534)
+I (C:\Keil_v5\ARM\CMSIS\Include\core_cmInstr.h)(0x53462B64)
+I (C:\Keil_v5\ARM\CMSIS\Include\core_cmFunc.h)(0x53462B64)
+I (C:\Keil_v5\ARM\INC\ST\STM32F10x\system_stm32f10x.h)(0x53462932)
+I (.\src\stm32f10x_conf.h)(0x5AA984A5)
+F (.\src\main.c)(0x5AA98440)(-c --cpu Cortex-M3 -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I E:\lecture\Header_all -I .\src-IC:\Keil_v5\ARM\RV31\INC-IC:\Keil_v5\ARM\CMSIS\Include-IC:\Keil_v5\ARM\INC\ST\STM32F10x-D__UVISION_VERSION="524" -DUSE_STDPERIPH_DRIVER -DSTM32F10X_MD-o .\out\main.o --omf_browse .\out\main.crf --depend .\out\main.d)
+I (src\My_I2C.h)(0x5A1626C4)
+I (C:\Keil_v5\ARM\INC\ST\STM32F10x\stm32f10x.h)(0x53BA3504)
+I (C:\Keil_v5\ARM\CMSIS\Include\core_cm3.h)(0x53462B64)
+I (C:\Keil_v5\ARM\ARMCC\include\stdint.h)(0x588B7534)
+I (C:\Keil_v5\ARM\CMSIS\Include\core_cmInstr.h)(0x53462B64)
+I (C:\Keil_v5\ARM\CMSIS\Include\core_cmFunc.h)(0x53462B64)
+I (C:\Keil_v5\ARM\INC\ST\STM32F10x\system_stm32f10x.h)(0x53462932)
+I (.\src\stm32f10x_conf.h)(0x5AA984A5)
+F (.\src\My_I2C.c)(0x5A1626C8)(-c --cpu Cortex-M3 -D__MICROLIB -g -O0 --apcs=interwork --split_sections -I E:\lecture\Header_all -I .\src-IC:\Keil_v5\ARM\RV31\INC-IC:\Keil_v5\ARM\CMSIS\Include-IC:\Keil_v5\ARM\INC\ST\STM32F10x-D__UVISION_VERSION="524" -DUSE_STDPERIPH_DRIVER -DSTM32F10X_MD-o .\out\my_i2c.o --omf_browse .\out\my_i2c.crf --depend .\out\my_i2c.d)
+I (src\My_I2C.h)(0x5A1626C4)
+I (C:\Keil_v5\ARM\INC\ST\STM32F10x\stm32f10x.h)(0x53BA3504)
+I (C:\Keil_v5\ARM\CMSIS\Include\core_cm3.h)(0x53462B64)
+I (C:\Keil_v5\ARM\ARMCC\include\stdint.h)(0x588B7534)
+I (C:\Keil_v5\ARM\CMSIS\Include\core_cmInstr.h)(0x53462B64)
+I (C:\Keil_v5\ARM\CMSIS\Include\core_cmFunc.h)(0x53462B64)
+I (C:\Keil_v5\ARM\INC\ST\STM32F10x\system_stm32f10x.h)(0x53462932)
+I (.\src\stm32f10x_conf.h)(0x5AA984A5)
+F (.\LIB_32f10x.lib)(0x5A028E8E)()

@@ -1,0 +1,9 @@
+.\out\debug_support.o: src\debug_support.c
+.\out\debug_support.o: src\debug_support.h
+.\out\debug_support.o: C:\Keil_v5\ARM\INC\ST\STM32F10x\stm32f10x.h
+.\out\debug_support.o: C:\Keil_v5\ARM\CMSIS\Include\core_cm3.h
+.\out\debug_support.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+.\out\debug_support.o: C:\Keil_v5\ARM\CMSIS\Include\core_cmInstr.h
+.\out\debug_support.o: C:\Keil_v5\ARM\CMSIS\Include\core_cmFunc.h
+.\out\debug_support.o: C:\Keil_v5\ARM\INC\ST\STM32F10x\system_stm32f10x.h
+.\out\debug_support.o: .\src\stm32f10x_conf.h

@@ -1,0 +1,9 @@
+.\out\my_i2c.o: src\My_I2C.c
+.\out\my_i2c.o: src\My_I2C.h
+.\out\my_i2c.o: C:\Keil_v5\ARM\INC\ST\STM32F10x\stm32f10x.h
+.\out\my_i2c.o: C:\Keil_v5\ARM\CMSIS\Include\core_cm3.h
+.\out\my_i2c.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+.\out\my_i2c.o: C:\Keil_v5\ARM\CMSIS\Include\core_cmInstr.h
+.\out\my_i2c.o: C:\Keil_v5\ARM\CMSIS\Include\core_cmFunc.h
+.\out\my_i2c.o: C:\Keil_v5\ARM\INC\ST\STM32F10x\system_stm32f10x.h
+.\out\my_i2c.o: .\src\stm32f10x_conf.h

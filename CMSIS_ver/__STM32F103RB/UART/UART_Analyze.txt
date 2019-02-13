@@ -1,0 +1,308 @@
+#include "stm32f10x.h"
+#include "platform_config.h"
+
+/* Private typedef -----------------------------------------------------------*/
+typedef enum { FAILED = 0, PASSED = !FAILED} TestStatus;
+
+/* Private define ------------------------------------------------------------*/
+#define TxBufferSize   (countof(TxBuffer))
+
+/* Private macro -------------------------------------------------------------*/
+#define countof(a)   (sizeof(a) / sizeof(*(a)))
+
+/* Private variables ---------------------------------------------------------*/
+USART_InitTypeDef USART_InitStructure;// uart 구조체 선언
+
+uint8_t TxBuffer[] = "Buffer Send from USARTy to USARTz using Flags";
+uint8_t RxBuffer[TxBufferSize];
+__IO uint8_t TxCounter = 0, RxCounter = 0;  
+volatile TestStatus TransferStatus = FAILED;  
+
+/* Private function prototypes -----------------------------------------------*/
+void RCC_Configuration(void);
+void GPIO_Configuration(void);
+TestStatus Buffercmp(uint8_t* pBuffer1, uint8_t* pBuffer2, uint16_t BufferLength);
+__IO uint8_t index = 0;
+  
+/* Private functions ---------------------------------------------------------*/
+
+/**
+  * @brief  Main program
+  * @param  None
+  * @retval None
+  */
+int main(void)
+{
+       
+  /* System Clocks Configuration */
+  RCC_Configuration();// UART1, UART2, AFIO RCC clock enable
+
+  /* Configure the GPIO ports */
+  GPIO_Configuration();// UART1, UART2 GPIO INIT
+
+/* USARTy and USARTz configuration ------------------------------------------------------*/
+  /* USARTy and USARTz configured as follow:
+        - BaudRate = 230400 baud  
+        - Word Length = 8 Bits
+        - One Stop Bit
+        - Even parity
+        - Hardware flow control disabled (RTS and CTS signals)
+        - Receive and transmit enabled
+  */
+  USART_InitStructure.USART_BaudRate = 230400;// 230400bps
+  USART_InitStructure.USART_WordLength = USART_WordLength_8b;// 한번에 8bit 데이터 송수신
+  USART_InitStructure.USART_StopBits = USART_StopBits_1;// 1bit stop bit
+  USART_InitStructure.USART_Parity = USART_Parity_Even;// parity control enable
+  USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+  USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;// uart RX, TX enable
+  
+  /* Configure USARTy */
+  USART_Init(USARTy, &USART_InitStructure);// 설정값 적용(UART1) << 1. 참조
+  /* Configure USARTz */
+  USART_Init(USARTz, &USART_InitStructure);// 설정값 적용(UART2)
+  
+  /* Enable the USARTy */
+  USART_Cmd(USARTy, ENABLE);// USART1 Enable << 2. 참조
+
+  /* Enable the USARTz */
+  USART_Cmd(USARTz, ENABLE);// USART2 enable
+
+  while(TxCounter < TxBufferSize)
+  {   
+    /* Send one byte from USARTy to USARTz */
+    USART_SendData(USARTy, TxBuffer[TxCounter++]);
+    
+    /* Loop until USARTy DR register is empty */ 
+    while(USART_GetFlagStatus(USARTy, USART_FLAG_TXE) == RESET)// USRAT TX가 0일때(데이터 레지스터가 0일때)
+    {// loop
+    }
+    
+    /* Loop until the USARTz Receive Data Register is not empty */
+    while(USART_GetFlagStatus(USARTz, USART_FLAG_RXNE) == RESET)
+    {
+    }
+
+    /* Store the received byte in RxBuffer */
+    RxBuffer[RxCounter++] = (USART_ReceiveData(USARTz) & 0x7F);  
+    
+  } 
+  /* Check the received data with the send ones */
+  TransferStatus = Buffercmp(TxBuffer, RxBuffer, TxBufferSize);
+  /* TransferStatus = PASSED, if the data transmitted from USARTy and  
+     received by USARTz are the same */
+  /* TransferStatus = FAILED, if the data transmitted from USARTy and 
+     received by USARTz are different */
+
+  while (1)
+  {
+  }
+}
+
+/**
+  * @brief  Configures the different system clocks.
+  * @param  None
+  * @retval None
+  */
+void RCC_Configuration(void)
+{    
+  /* Enable GPIO clock */
+  RCC_APB2PeriphClockCmd(USARTy_GPIO_CLK | USARTz_GPIO_CLK | RCC_APB2Periph_AFIO, ENABLE);
+
+#ifndef USE_STM3210C_EVAL
+  /* Enable USARTy Clock */
+  RCC_APB2PeriphClockCmd(USARTy_CLK, ENABLE); 
+#else
+  /* Enable USARTy Clock */
+  RCC_APB1PeriphClockCmd(USARTy_CLK, ENABLE); 
+#endif
+  /* Enable USARTz Clock */
+  RCC_APB1PeriphClockCmd(USARTz_CLK, ENABLE);  
+}
+
+/**
+  * @brief  Configures the different GPIO ports.
+  * @param  None
+  * @retval None
+  */
+void GPIO_Configuration(void)
+{
+  GPIO_InitTypeDef GPIO_InitStructure;
+
+#ifdef USE_STM3210C_EVAL
+  /* Enable the USART3 Pins Software Remapping */
+  GPIO_PinRemapConfig(GPIO_PartialRemap_USART3, ENABLE);
+  
+  /* Enable the USART2 Pins Software Remapping */
+  GPIO_PinRemapConfig(GPIO_Remap_USART2, ENABLE);  
+#elif defined(USE_STM3210B_EVAL) || defined(USE_STM32100B_EVAL)
+  /* Enable the USART2 Pins Software Remapping */
+  GPIO_PinRemapConfig(GPIO_Remap_USART2, ENABLE);
+#endif
+
+  /* Configure USARTy Rx as input floating */
+  GPIO_InitStructure.GPIO_Pin = USARTy_RxPin;  
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+  GPIO_Init(USARTy_GPIO, &GPIO_InitStructure);
+  
+  /* Configure USARTz Rx as input floating */
+  GPIO_InitStructure.GPIO_Pin = USARTz_RxPin;
+  GPIO_Init(USARTz_GPIO, &GPIO_InitStructure);  
+  
+  /* Configure USARTy Tx as alternate function push-pull */
+  GPIO_InitStructure.GPIO_Pin = USARTy_TxPin;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+  GPIO_Init(USARTy_GPIO, &GPIO_InitStructure);
+
+  /* Configure USARTz Tx as alternate function push-pull */
+  GPIO_InitStructure.GPIO_Pin = USARTz_TxPin;
+  GPIO_Init(USARTz_GPIO, &GPIO_InitStructure); 
+}
+
+/**
+  * @brief  Compares two buffers.
+  * @param  pBuffer1, pBuffer2: buffers to be compared.
+  * @param  BufferLength: buffer's length
+  * @retval PASSED: pBuffer1 identical to pBuffer2
+  *         FAILED: pBuffer1 differs from pBuffer2
+  */
+TestStatus Buffercmp(uint8_t* pBuffer1, uint8_t* pBuffer2, uint16_t BufferLength)
+{
+  while(BufferLength--)
+  {
+    if(*pBuffer1 != *pBuffer2)
+    {
+      return FAILED;
+    }
+    
+    pBuffer1++;
+    pBuffer2++;
+  }
+
+  return PASSED;  
+}
+
+
+
+1. USART_Init
+
+void USART_Init(USART_TypeDef* USARTx, USART_InitTypeDef* USART_InitStruct)
+{
+  uint32_t tmpreg = 0x00, apbclock = 0x00;
+  uint32_t integerdivider = 0x00;
+  uint32_t fractionaldivider = 0x00;
+  uint32_t usartxbase = 0;
+  RCC_ClocksTypeDef RCC_ClocksStatus;
+  /* Check the parameters */
+  assert_param(IS_USART_ALL_PERIPH(USARTx));
+  assert_param(IS_USART_BAUDRATE(USART_InitStruct->USART_BaudRate));  
+  assert_param(IS_USART_WORD_LENGTH(USART_InitStruct->USART_WordLength));
+  assert_param(IS_USART_STOPBITS(USART_InitStruct->USART_StopBits));
+  assert_param(IS_USART_PARITY(USART_InitStruct->USART_Parity));
+  assert_param(IS_USART_MODE(USART_InitStruct->USART_Mode));
+  assert_param(IS_USART_HARDWARE_FLOW_CONTROL(USART_InitStruct->USART_HardwareFlowControl));
+  /* The hardware flow control is available only for USART1, USART2 and USART3 */
+  if (USART_InitStruct->USART_HardwareFlowControl != USART_HardwareFlowControl_None)// UART Hardware flow control을 사용하면
+  {
+    assert_param(IS_USART_123_PERIPH(USARTx));// uart1, 2, 3중 하나인지 확인
+  }
+
+  usartxbase = (uint32_t)USARTx;
+
+/*---------------------------- USART CR2 Configuration -----------------------*/
+  tmpreg = USARTx->CR2;// USARTx->CR2값을 저장(클럭 설정 관련 레지스터)
+  /* Clear STOP[13:12] bits */
+  tmpreg &= CR2_STOP_CLEAR_Mask;// STOP 비트 초기화
+  /* Configure the USART Stop Bits, Clock, CPOL, CPHA and LastBit ------------*/
+  /* Set STOP[13:12] bits according to USART_StopBits value */
+  tmpreg |= (uint32_t)USART_InitStruct->USART_StopBits;// STOP 비트 설정
+  
+  /* Write to USART CR2 */
+  USARTx->CR2 = (uint16_t)tmpreg;// STOP 비트 설정한것을 적용
+
+/*---------------------------- USART CR1 Configuration -----------------------*/
+  tmpreg = USARTx->CR1;// USART->CR1값 저장(UART 통신 enable 설정 관련 레지스터)
+  /* Clear M, PCE, PS, TE and RE bits */
+  tmpreg &= CR1_CLEAR_Mask;// 한번에 전송할 데이터길이, parity, uart모드 비트 초기화
+  /* Configure the USART Word Length, Parity and mode ----------------------- */
+  /* Set the M bits according to USART_WordLength value */
+  /* Set PCE and PS bits according to USART_Parity value */
+  /* Set TE and RE bits according to USART_Mode value */
+  tmpreg |= (uint32_t)USART_InitStruct->USART_WordLength | USART_InitStruct->USART_Parity |
+            USART_InitStruct->USART_Mode;// 한번에 전송할 데이터 길이, parity 관련, uart모드(rx, tx)데이터 입력
+  /* Write to USART CR1 */
+  USARTx->CR1 = (uint16_t)tmpreg;// 입력한 값 적용
+
+/*---------------------------- USART CR3 Configuration -----------------------*/  
+  tmpreg = USARTx->CR3;// USARTx->CR3값 저장
+  /* Clear CTSE and RTSE bits */
+  tmpreg &= CR3_CLEAR_Mask;// CTSE, RTSE비트 초기화
+  /* Configure the USART HFC -------------------------------------------------*/
+  /* Set CTSE and RTSE bits according to USART_HardwareFlowControl value */
+  tmpreg |= USART_InitStruct->USART_HardwareFlowControl;// HardwareFlowControl 데이터 입력
+  /* Write to USART CR3 */
+  USARTx->CR3 = (uint16_t)tmpreg;// 입력 데이터 적용
+
+/*---------------------------- USART BRR Configuration -----------------------*/ << bps 계산하는 부분
+  /* Configure the USART Baud Rate -------------------------------------------*/
+  RCC_GetClocksFreq(&RCC_ClocksStatus);// RCC 클럭 데이터 가져옴
+  if (usartxbase == USART1_BASE)
+  {
+    apbclock = RCC_ClocksStatus.PCLK2_Frequency;
+  }
+  else
+  {
+    apbclock = RCC_ClocksStatus.PCLK1_Frequency;
+  }
+  
+  /* Determine the integer part */
+  if ((USARTx->CR1 & CR1_OVER8_Set) != 0)
+  {
+    /* Integer part computing in case Oversampling mode is 8 Samples */
+    integerdivider = ((25 * apbclock) / (2 * (USART_InitStruct->USART_BaudRate)));    
+  }
+  else /* if ((USARTx->CR1 & CR1_OVER8_Set) == 0) */
+  {
+    /* Integer part computing in case Oversampling mode is 16 Samples */
+    integerdivider = ((25 * apbclock) / (4 * (USART_InitStruct->USART_BaudRate)));    
+  }
+  tmpreg = (integerdivider / 100) << 4;
+
+  /* Determine the fractional part */
+  fractionaldivider = integerdivider - (100 * (tmpreg >> 4));
+
+  /* Implement the fractional part in the register */
+  if ((USARTx->CR1 & CR1_OVER8_Set) != 0)
+  {
+    tmpreg |= ((((fractionaldivider * 8) + 50) / 100)) & ((uint8_t)0x07);
+  }
+  else /* if ((USARTx->CR1 & CR1_OVER8_Set) == 0) */
+  {
+    tmpreg |= ((((fractionaldivider * 16) + 50) / 100)) & ((uint8_t)0x0F);
+  }
+  
+  /* Write to USART BRR */
+  USARTx->BRR = (uint16_t)tmpreg;
+}
+
+
+
+2. USART_Cmd
+
+void USART_Cmd(USART_TypeDef* USARTx, FunctionalState NewState)
+{
+  /* Check the parameters */
+  assert_param(IS_USART_ALL_PERIPH(USARTx));
+  assert_param(IS_FUNCTIONAL_STATE(NewState));
+  
+  if (NewState != DISABLE)// USART enable
+  {
+    /* Enable the selected USART by setting the UE bit in the CR1 register */
+    USARTx->CR1 |= CR1_UE_Set;// USART enable
+  }
+  else
+  {
+    /* Disable the selected USART by clearing the UE bit in the CR1 register */
+    USARTx->CR1 &= CR1_UE_Reset;// USART disable
+  }
+}

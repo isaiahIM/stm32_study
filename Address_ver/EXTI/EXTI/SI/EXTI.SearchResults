@@ -1,0 +1,3 @@
+---- __heap_base Matches (2 in 1 files) ----
+STM32F10x.s (g:\data\edu\data_edu\exti\exti\initialisation):__heap_base
+STM32F10x.s (g:\data\edu\data_edu\exti\exti\initialisation):                EXPORT  __heap_base

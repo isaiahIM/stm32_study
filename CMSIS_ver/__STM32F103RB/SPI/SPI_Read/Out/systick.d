@@ -1,0 +1,9 @@
+.\out\systick.o: src\SysTick.c
+.\out\systick.o: src\SysTick.h
+.\out\systick.o: C:\Keil_v5\ARM\INC\ST\STM32F10x\stm32f10x.h
+.\out\systick.o: C:\Keil_v5\ARM\CMSIS\Include\core_cm3.h
+.\out\systick.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+.\out\systick.o: C:\Keil_v5\ARM\CMSIS\Include\core_cmInstr.h
+.\out\systick.o: C:\Keil_v5\ARM\CMSIS\Include\core_cmFunc.h
+.\out\systick.o: C:\Keil_v5\ARM\INC\ST\STM32F10x\system_stm32f10x.h
+.\out\systick.o: .\src\stm32f10x_conf.h

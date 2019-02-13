@@ -1,0 +1,11 @@
+--cpu Cortex-M3
+".\out\system_stm32f10x.o"
+".\out\main.o"
+".\out\debug_support.o"
+".\out\usart.o"
+".\out\systick.o"
+".\LIB_32f10x.lib"
+--library_type=microlib --strict --scatter ".\Out\IOToggle.sct"
+--summary_stderr --info summarysizes --map --xref --callgraph --symbols
+--info sizes --info totals --info unused --info veneers
+--list ".\IOToggle.map" -o .\Out\IOToggle.axf

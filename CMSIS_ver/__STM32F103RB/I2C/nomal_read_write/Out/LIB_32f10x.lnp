@@ -1,0 +1,9 @@
+--cpu Cortex-M3
+".\out\system_stm32f10x.o"
+".\out\main.o"
+".\out\my_i2c.o"
+".\LIB_32f10x.lib"
+--library_type=microlib --strict --scatter ".\Out\LIB_32f10x.sct"
+--summary_stderr --info summarysizes --map --xref --callgraph --symbols
+--info sizes --info totals --info unused --info veneers
+--list ".\LIB_32f10x.map" -o .\Out\LIB_32f10x.axf
